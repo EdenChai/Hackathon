@@ -17,7 +17,7 @@ team_name3 = "Busha Veherpa"
 
 BUFFER_SIZE = 1024
 
-dev_network = "10.100.102.3"
+dev_network = "192.168.32.1"
 # test_network = "172.99.0.255"
 
 # COLORS

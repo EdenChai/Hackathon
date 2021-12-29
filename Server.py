@@ -1,7 +1,11 @@
+import queue
+import selectors
+import types
+
 from Configuration import *
 import concurrent
 from concurrent.futures import thread
-from termcolor import colored
+#from termcolor import colored
 from socket import *
 import threading
 import operator
@@ -27,8 +31,10 @@ class Server:
         
         self.mutex = threading.Lock()
         self.players = []
-        self.result = []
-        
+        self.result = queue.Queue()
+        self.sel = selectors.DefaultSelector()
+        self.ans = 0
+
     def thread_send_Announcements(self):
         """
             This function calling to new thread that automatically
@@ -49,7 +55,19 @@ class Server:
         packet = struct.pack(">Ibh", magic_cookie, message_type, team_port)
         print(Red, f"Server started, listening on IP address {dev_network}")
         self.udpSocket.sendto(packet, (dev_network, udp_port))
-        
+
+    def accept_wrapper(self, sock):
+        """
+        accepts connection requests from clients while still sending offer requests.
+        """
+        try:
+            conn, address = sock.accept()  # Should be ready to read
+            conn.setblocking(False)
+            data = types.SimpleNamespace(addr=address, inb=b'', outb=b'')
+            self.sel.register(conn, selectors.EVENT_READ | selectors.EVENT_WRITE, data=data)
+        except:
+            pass
+
     def waiting_for_clients(self):
         """
             This function is the first state of server.
@@ -62,6 +80,9 @@ class Server:
                 player_name = client_socket.recv(BUFFER_SIZE).decode("utf-8")
                 player = (client_socket, client_address, player_name)
                 self.players.append(player)
+                client_socket.setblocking(False)#+++
+                data = types.SimpleNamespace(addr=client_address, inb=b'', outb=b'')#+++
+                self.sel.register(client_socket, selectors.EVENT_READ |selectors.EVENT_WRITE, data=data)#+++
             except:
                 continue
                 
@@ -86,12 +107,14 @@ class Server:
             We stay in this state until 10 seconds have passed or
             until one of the players has tried to answer the question
         """
-        time.sleep(10)
+        #time.sleep(10)
         
         # Continue to create a random question until its answer is between 0-9 and the number is integer.
         answer = self.quick_math_generator()
         while answer[3] < 0 or answer[3] > 9 or type(answer[3]) != int:
             answer = self.quick_math_generator()
+
+        self.ans = answer[3]
         
         welcome_message = "Welcome to Quick Maths.\n"
         welcome_message += f"Player 1: {self.players[0][2]}"
@@ -107,42 +130,43 @@ class Server:
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             for player in self.players:
                 pool.submit(self.game_result, player[0], player[2])
-            
-        self.check_result(answer[3])
+
+
+
         self.init_variables()
         print("Game over, sending out offer requests...")
         self.thread_send_Announcements()
+
 
     def game_result(self, player_socket, player_name):
         try:
             # Set timout to 10 seconds
             player_socket.settimeout(10)
+            print("befor")
             player_answer = player_socket.recv(BUFFER_SIZE)
-            self.mutex.acquire()
-            
-            # Check if the second player already answer to question
-            if len(self.result) > 0:
-                self.mutex.release()
-                return
-            else:
-                self.result.append(player_answer.decode())
-                self.result.append(player_name)
-            self.mutex.release()
+            print("afterr")
+            print(player_answer)
+            print("after print answer")
+            self.result.put((player_answer, player_name))
+            self.check_result(self.ans)
+
         except timeout:
+            print("except")
+            self.check_result(self.ans)
             return
             
     def check_result(self, actual_answer):
         player1 = self.players[0][2]
         player2 = self.players[1][2]
-        if len(self.result) == 0:
+        if self.result.qsize() == 0:
             res = "Draw"
         else:
-            player_name = self.result[1]
+            player_name = self.result.get(block=False)
             
-            if self.result[0] == actual_answer:
-                res = player_name
+            if int(player_name[0]) == actual_answer:
+                res = player_name[1]
             else:
-                if player_name == player1:
+                if player_name[1] == player1:
                     res = player2
                 else:
                     res = player1
@@ -159,6 +183,7 @@ class Server:
     def init_variables(self):
         self.players = []
         self.result = []
+        self.ans = 0
         
 if __name__ == '__main__':
     server = Server()
