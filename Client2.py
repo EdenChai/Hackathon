@@ -10,7 +10,6 @@ from ThreadHendall import *
 # import getch #TODO: change to this in VS
 import msvcrt
 
-
 class Client:
     def __init__(self):
         self.tcp_socket = None
@@ -18,7 +17,7 @@ class Client:
     def recieveMessage(self):
         # try to get a server
         sock = socket(AF_INET, SOCK_DGRAM)
-        sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # TODO : change to SO_REUSEPORT
+        sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1) # TODO : change to SO_REUSEPORT
         sock.bind(("", udp_port))
         message = None
         while message is None:
@@ -29,7 +28,7 @@ class Client:
                 continue
         return message
 
-    def connectTcp(self, addr, port_num):
+    def connectTcp(self,addr, port_num):
         tcpIp, _ = addr
         # tcpIp="127.0.0.1"  # for check our server
         # portNum=2043
@@ -48,29 +47,20 @@ class Client:
         val = sys.stdin.readline(1)
         tcp_socket.send(bytes(val, "utf-8"))
 
-    def startPlaying(self, tcp_socket):
+    def startPlaying(self,tcp_socket):
         ## game state
         try:
-            thredd = threading.Thread(target=self.std_handler)
+            thredd = threading.Thread(target =self.std_handler)
             thredd.start()
             msgFromServer = tcp_socket.recv(1024).decode("utf-8")
             print(msgFromServer)
-            # thread1 = myThread(1, "Thread1", self.tcp_socket)
-            # thread1.start()
-            # server_result_bytes = self.tcp_socket.recv(1024)
-            # thread1.kill()
-            # server_result = server_result_bytes.decode()
-            # print(server_result)
-            # getch_thread = Process(target=self.std_handler)
-            # getch_thread.start()
-            # server_result_bytes = self.tcp_socket.recv(1024)
-            # getch_thread.kill()
-            # server_result = server_result_bytes.decode()
-            # print(server_result)
+
         except:
             return
 
-    def getPort(self, receivedData):
+
+
+    def getPort(self,receivedData):
         # check if message is correct type - if yes return port number else return None
         try:
             # print(struct.unpack("Ibh", receivedData))
@@ -99,10 +89,10 @@ class Client:
             ## attempting to connect TCP
             try:
                 self.connectTcp(address, portNum)
+                time.sleep(1)
             except:
                 continue
                 print("Server disconnected, listening for offer requests...")  ## continue to wait for offers
-
 
 if __name__ == '__main__':
     client = Client()

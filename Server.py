@@ -185,8 +185,9 @@ class Server:
         self.result = []
         self.ans = 0
         
-if __name__ == '__main__':
+if __name__ == '__main__':  
     server = Server()
     server.tcpSocket.listen()
     server.thread_send_Announcements()
     server.waiting_for_clients()
+    #time.sleep(1)

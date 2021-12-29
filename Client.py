@@ -54,18 +54,7 @@ class Client:
             thredd.start()
             msgFromServer = tcp_socket.recv(1024).decode("utf-8")
             print(msgFromServer)
-            #thread1 = myThread(1, "Thread1", self.tcp_socket)
-            #thread1.start()
-            #server_result_bytes = self.tcp_socket.recv(1024)
-            #thread1.kill()
-            #server_result = server_result_bytes.decode()
-            #print(server_result)
-            #getch_thread = Process(target=self.std_handler)
-            #getch_thread.start()
-            #server_result_bytes = self.tcp_socket.recv(1024)
-            #getch_thread.kill()
-            #server_result = server_result_bytes.decode()
-            #print(server_result)
+
         except:
             return
 
@@ -100,6 +89,7 @@ class Client:
             ## attempting to connect TCP
             try:
                 self.connectTcp(address, portNum)
+                time.sleep(1)
             except:
                 continue
                 print("Server disconnected, listening for offer requests...")  ## continue to wait for offers
