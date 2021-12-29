@@ -1,13 +1,16 @@
 from Configuration import *
-from datetime import time
+import concurrent
+from concurrent.futures import thread
+from termcolor import colored
 from socket import *
 import threading
-import struct
+import operator
 import random
+import struct
+import time
 
 class Server:
     def __init__(self):
-        
         # Initialize UDP socket
         self.udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         # Enable port reusage so we will be able to run multiple clients and servers on single (host, port)
@@ -18,118 +21,147 @@ class Server:
         # Initialize TCP socket
         self.tcpSocket = socket(AF_INET, SOCK_STREAM)
         # Enable port reusage so we will be able to run multiple clients and servers on single (host, port)
-        self.tcpSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        self.tcpSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # TODO : change to SO_REUSEPORT
+        # Binding TCP socket to their port
+        self.tcpSocket.bind((dev_network, team_port))
         
-        self.teams = []
-        # self.hostName = gethostname()
-        # self.hostIP = gethostbyname(gethostname())
+        self.mutex = threading.Lock()
+        self.players = []
+        self.result = []
         
     def thread_send_Announcements(self):
         """
-        This function using by new process for approving terminate in 10 second.
-        Its calling to new thread that send a broadcast invitation every 1 second for playing in our server
+            This function calling to new thread that automatically
+            sending out “offer” announcements via UDP broadcast
+            once every second for playing in our server.
         """
-        threading.Timer(1.0, self.thread_send_Announcements).start()
-        # self.udpSocket.bind((dev_network, udp_port))
-        # self.udpSocket.listen()
-        self.send_udp_broadcast_suggestion()
+        if len(self.players) < 2:
+            threading.Timer(1.0, self.thread_send_Announcements).start()
+            self.send_udp_broadcast_suggestion()
         
     def send_udp_broadcast_suggestion(self):
+        """
+            This function create and send the broadcast message
+            that every thread need to sent
+        """
         magic_cookie = int(0xabcddcba)
         message_type = int(0x2)
         packet = struct.pack(">Ibh", magic_cookie, message_type, team_port)
-        print(f"Server started, listening on IP address {dev_network}", Yellow)
-        # self.udpSocket.setblocking(False)
-        self.udpSocket.sendto(packet, (dev_network, udp_port))   # send port to connect with TCP connection
+        print(Red, f"Server started, listening on IP address {dev_network}")
+        self.udpSocket.sendto(packet, (dev_network, udp_port))
         
     def waiting_for_clients(self):
         """
-            this func is the first stage of server
-            here server start to send offers to clients in net
-            and listen for Tcp connections for Players that want to join
-            this Func update Self.Teams the Clients that Registered
+            This function is the first state of server.
+            It's responding to request messages and new TCP connections.
+            We stay in this state until two clients connect to server.
         """
-        
-        # threading.Thread(target=self.thread_send_Announcements).start()
-        players = []
-        while len(players) < 2:
+        while len(self.players) < 2:
             try:
                 client_socket, client_address = self.tcpSocket.accept()
-                player_name = client_socket.recv(BUFFER_SIZE).decode("utf-8").split('\n')
+                player_name = client_socket.recv(BUFFER_SIZE).decode("utf-8")
                 player = (client_socket, client_address, player_name)
-                players.append(player)
+                self.players.append(player)
             except:
                 continue
-        self.game_mode(players)
+                
+        self.game_mode()
         
-        # print("Welcome to Quick Maths.")
-        # print(f'Player {count_players}: {team_name}')
-        # print("==")
-    
-    def game_mode(self, players):
+    def quick_math_generator(self):
         """
-            This func gets a clients connected to game and check
-            if his answer to the question is correct
+            This function generates a simple random math problem.
+            :return: answer: list of [num1, operator, num2, result]
         """
-        start_time = time()
+        ops = { '+': operator.add, '-': operator.sub, '*': operator.mul, '/': operator.truediv }
+        op = random.choice(list(ops.keys()))
+        x = random.randint(0, 20)
+        y = random.randint(1, 20)  # We don't sample 0's to protect against divide-by-zero
+        answer = [x, op, y, ops.get(op)(x, y)]
+        return answer
+ 
+    def game_mode(self):
+        """
+            This function is the second state of the server.
+            It's collect characters from the network and decide the winner.
+            We stay in this state until 10 seconds have passed or
+            until one of the players has tried to answer the question
+        """
+        time.sleep(10)
+        
+        # Continue to create a random question until its answer is between 0-9 and the number is integer.
+        answer = self.quick_math_generator()
+        while answer[3] < 0 or answer[3] > 9 or type(answer[3]) != int:
+            answer = self.quick_math_generator()
         
         welcome_message = "Welcome to Quick Maths.\n"
-        welcome_message += f"Player 1: {players[0][2][0]}\n"
-        welcome_message += f"Player 2: {players[1][2][0]}\n"
+        welcome_message += f"Player 1: {self.players[0][2]}"
+        welcome_message += f"Player 2: {self.players[1][2]}"
         welcome_message += "==\n"
         welcome_message += "Please answer the following question as fast as you can:\n"
-        welcome_message += "How much is 2+2?"
-        print(welcome_message)
-        # counter = 0
-        # start = time.time()
-        # while time.time() - start < self.gameTime:
-        #     try:
-        #         client.settimeout(0.01)
-        #         chartype = client.recv(self.bufferSize).decode("utf-8")
-        #         counter += len(chartype)
-        #     except:
-        #         pass
-        #
-        # return counter
-    
-    # def random_funck(self):
-    #     dic_of_func = { }
-    #     x = random.randint(0, 9)
-    #     y = 9 - x
-    #     ans = x + y
-    #     dic_of_func[f'{x}+{y}'] = ans
-    #
-    #     x = random.randint(0, 9)
-    #     y = random.randint(0, x)
-    #     ans = x - y
-    #     dic_of_func[f'{x}-{y}?'] = ans
-    #
-    #     dic_of_func["8:2?"] = 4
-    #     dic_of_func["6:3?"] = 2
-    #     dic_of_func["9:3?"] = 3
-    #     dic_of_func["4:2?"] = 2
-    #     dic_of_func["4X2?"] = 8
-    #     dic_of_func["3X2?"] = 6
-    #     dic_of_func["3X3?"] = 9
-    #
-    #     rand = random.randint(0, len(dic_of_func - 1))
-    #     return dic_of_func.items()[rand]
+        welcome_message += f"How much is {answer[0]}{answer[1]}{answer[2]}?"
+        
+        # Send the welcoming message to all players
+        for player in self.players:
+            player[0].sendall(bytes(welcome_message, "utf-8"))
 
+        with concurrent.futures.ThreadPoolExecutor(2) as pool:
+            for player in self.players:
+                pool.submit(self.game_result, player[0], player[2])
+            
+        self.check_result(answer[3])
+        self.init_variables()
+        print("Game over, sending out offer requests...")
+        self.thread_send_Announcements()
 
+    def game_result(self, player_socket, player_name):
+        try:
+            # Set timout to 10 seconds
+            player_socket.settimeout(10)
+            player_answer = player_socket.recv(BUFFER_SIZE)
+            self.mutex.acquire()
+            
+            # Check if the second player already answer to question
+            if len(self.result) > 0:
+                self.mutex.release()
+                return
+            else:
+                self.result.append(player_answer.decode())
+                self.result.append(player_name)
+            self.mutex.release()
+        except timeout:
+            return
+            
+    def check_result(self, actual_answer):
+        player1 = self.players[0][2]
+        player2 = self.players[1][2]
+        if len(self.result) == 0:
+            res = "Draw"
+        else:
+            player_name = self.result[1]
+            
+            if self.result[0] == actual_answer:
+                res = player_name
+            else:
+                if player_name == player1:
+                    res = player2
+                else:
+                    res = player1
+        
+        game_result_message = "Game over!\n"
+        game_result_message += f"The correct answer was {actual_answer}!\n\n"
+        game_result_message += f"Congratulations to the winner: {res}"
+        
+        # Send to all players the game result message and close sockets
+        for player in self.players:
+            player[0].sendall(bytes(game_result_message, "utf-8"))
+            player[0].close()
+        
+    def init_variables(self):
+        self.players = []
+        self.result = []
+        
 if __name__ == '__main__':
     server = Server()
-    # con=False
-    # while not con:
-    #     try:
-    server.tcpSocket.bind(("", 2046))
-    #         con=True
-    #     except:
-    #         pass
     server.tcpSocket.listen()
-    # while 1:
-        # server.teams = []
-        ## starting msg
-        # print(colored(f"Server started,listening on IP address {server.d}",'red'))
-        ## start sending udp offer annoucements via udp broadcast once every second
     server.thread_send_Announcements()
     server.waiting_for_clients()

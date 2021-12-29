@@ -1,3 +1,4 @@
+import multiprocessing
 from datetime import time
 from socket import *
 import struct
@@ -5,11 +6,11 @@ from Configuration import *
 # import getch #TODO: change to this in VS
 import msvcrt
 
-def recieveMesseage():
+def recieveMessage():
     # try to get a server
     sock = socket(AF_INET, SOCK_DGRAM)
-    sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    sock.bind(("", 13117))
+    sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1) # TODO : change to SO_REUSEPORT
+    sock.bind(("", udp_port))
     message = None
     while message is None:
         try:
@@ -26,24 +27,23 @@ def connectTcp(addr, port_num):
     # tcp socket
     tcp_socket = socket(AF_INET, SOCK_STREAM)
     tcp_socket.connect((tcpIp, port_num))
-    tcp_socket.send(bytes("BlackShadow" + "\n", "utf-8"))
+    tcp_socket.send(bytes(team_name + "\n", "utf-8"))
     data = tcp_socket.recv(BUFFER_SIZE).decode("utf-8")
     # the message that the server sent at the beginning of the game
     print(data)
     ## game state
-    # startPlaying(tcp_socket)
+    startPlaying(tcp_socket)
 
-# def startPlaying(tcp_socket):
-#     ## game state
-#     try:
-#         # start = time.time()
-#         # if time.time() - start < 10:
-#         val = getch.getch()
-#         tcp_socket.sendall(bytes(val, "utf-8"))
-#         msgFromServer = tcp_socket.recv(1024).decode("utf-8")
-#         print(msgFromServer)
-#     except:
-#         return
+def startPlaying(tcp_socket):
+    ## game state
+    try:
+        val = msvcrt.getch()
+        tcp_socket.sendall(bytes(val, "utf-8"))
+        msgFromServer = tcp_socket.recv(BUFFER_SIZE).decode("utf-8")
+        print(msgFromServer)
+        flag = True
+    except:
+        return
 
 def getPort(receivedData):
     # check if message is correct type - if yes return port number else return None
@@ -61,7 +61,7 @@ def startClient():
     print("Client started, listening for offer requests...")
     ## wait for offers
     while True:
-        receivedData, address = recieveMesseage()  # check buffer size
+        receivedData, address = recieveMessage()  # check buffer size
         # port_team = getPort(receivedData)
         print(f"Received offer from {address[0]}, attempting to connect...")
         ## state 2
@@ -78,4 +78,3 @@ def startClient():
             continue
         print("Server disconnected, listening for offer requests...")  ## continue to wait for offers
 
-startClient()

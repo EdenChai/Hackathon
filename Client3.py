@@ -26,7 +26,7 @@ def connectTcp(addr, port_num):
     # tcp socket
     tcp_socket = socket(AF_INET, SOCK_STREAM)
     tcp_socket.connect((tcpIp, port_num))
-    tcp_socket.send(bytes(team_name2 + "\n", "utf-8"))
+    tcp_socket.send(bytes(team_name3 + "\n", "utf-8"))
     data = tcp_socket.recv(BUFFER_SIZE).decode("utf-8")
     # the message that the server sent at the beginning of the game
     print(data)

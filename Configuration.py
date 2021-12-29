@@ -8,14 +8,17 @@ Provide global configuration variables inside the typical 'config.py'
 udp_port = 13117
 team_port = 2046
 
+team_name = "Al Tagid Stam"
+team_name2 = "Goal Nefesh"
+team_name3 = "Busha Veherpa"
+
 # dev_network = s.get_if_addr('eth1')
 # test_network = s.get_if_addr('eth2')
+
 BUFFER_SIZE = 1024
 
 dev_network = "10.100.102.3"
 # test_network = "172.99.0.255"
-game_time = 10
-udp_time = 10
 
 # COLORS
 Black = '\u001b[30;1m'
