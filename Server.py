@@ -56,17 +56,6 @@ class Server:
         print(Red, f"Server started, listening on IP address {dev_network}")
         self.udpSocket.sendto(packet, (dev_network, udp_port))
 
-    def accept_wrapper(self, sock):
-        """
-        accepts connection requests from clients while still sending offer requests.
-        """
-        try:
-            conn, address = sock.accept()  # Should be ready to read
-            conn.setblocking(False)
-            data = types.SimpleNamespace(addr=address, inb=b'', outb=b'')
-            self.sel.register(conn, selectors.EVENT_READ | selectors.EVENT_WRITE, data=data)
-        except:
-            pass
 
     def waiting_for_clients(self):
         """
