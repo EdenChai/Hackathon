@@ -131,11 +131,7 @@ class Server:
         try:
             # Set timout to 10 seconds
             player_socket.settimeout(10)
-            print("befor")
             player_answer = player_socket.recv(BUFFER_SIZE)
-            print("afterr")
-            print(player_answer)
-            print("after print answer")
             self.result.put((player_answer, player_name))
             self.check_result(self.ans)
 
@@ -179,4 +175,3 @@ if __name__ == '__main__':
     server.tcpSocket.listen()
     server.thread_send_Announcements()
     server.waiting_for_clients()
-    #time.sleep(1)
